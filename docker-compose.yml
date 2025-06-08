@@ -1,0 +1,32 @@
+secrets:
+  postgres_password:
+    file: ./password
+
+services:
+  pgsql:
+    image: postgres:17
+    container_name: pgsql
+    restart: always
+    user: "999:999"
+    command: ["postgres", "-c", "config_file=/postgresql.conf"]
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./postgresql.conf:/postgresql.conf
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
