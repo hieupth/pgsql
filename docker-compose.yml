@@ -3,24 +3,24 @@ secrets:
     file: ./password
 
 services:
-  pgsql:
+  postgresql:
     image: postgres:17
-    container_name: pgsql
+    container_name: postgresql
+    user: "${uid}:${gid}"
     restart: always
     command: ["postgres", "-c", "config_file=/postgresql.conf"]
-    ports:
-      - 5432:5432
     environment:
+      PGDATA: /pgdata
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./data:/pgdata
       - ./postgresql.conf:/postgresql.conf
     secrets:
       - postgres_password
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 3
     logging:
@@ -29,3 +29,22 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  pgbouncer:
+    image: edoburu/pgbouncer
+    container_name: pgbouncer
+    restart: always
+    ports:
+      - 6432:5432
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    links:
+      - postgresql:postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z postgresql 5432 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ~/ssl:/ssl:ro
